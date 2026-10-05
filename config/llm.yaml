@@ -1,0 +1,8 @@
+provider: groq
+
+models:
+  default: llama-3.3-70b-versatile
+
+generation:
+  temperature: 0.2
+  max_tokens: 2000
