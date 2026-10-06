@@ -1,0 +1,11 @@
+retrieval:
+  top_k: 5
+  similarity_threshold: 0.7
+
+chunking:
+  chunk_size: 800
+  chunk_overlap: 120
+
+search:
+  semantic: true
+  keyword: true

@@ -1,8 +1,10 @@
+from typing import Literal
+
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
 class Settings(BaseSettings):
-    app_env: str = "development"
+    app_env: Literal["development", "testing", "production"] = "development"
     log_level: str = "INFO"
 
     groq_api_key: str | None = None

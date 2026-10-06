@@ -1,0 +1,13 @@
+email:
+  max_length: 1500
+  tone: professional
+  include_unsubscribe: true
+
+followup:
+  enabled: true
+  max_attempts: 2
+  delay_days: 7
+
+personalization:
+  required: true
+  minimum_evidence_points: 2

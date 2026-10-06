@@ -1,0 +1,14 @@
+agent:
+  dry_run: true
+  require_human_approval: true
+
+outreach:
+  max_followups: 2
+  followup_interval_days: 7
+
+email:
+  max_recipients_per_run: 20
+
+safety:
+  stop_on_unsubscribe: true
+  stop_on_policy_violation: true

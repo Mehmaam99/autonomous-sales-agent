@@ -1,0 +1,26 @@
+niche:
+  name: restaurant
+  display_name: Restaurant
+
+ideal_customer_profile:
+  business_types:
+    - restaurant
+    - cafe
+  minimum_business_size: small
+
+pain_points:
+  - slow_lead_response
+  - missed_followups
+  - reservation_inquiries
+
+qualification:
+  minimum_score: 7
+  weights:
+    business_fit: 0.35
+    pain_signal: 0.30
+    website_quality: 0.20
+    contactability: 0.15
+
+offer:
+  name: AI Sales Assistant
+  value_proposition: Automate lead qualification and customer follow-up
