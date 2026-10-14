@@ -1,14 +1,19 @@
+﻿from datetime import datetime
 from typing import TYPE_CHECKING
 
-if TYPE_CHECKING:
-    from app.models.company import Company
-
-from datetime import datetime
-
-from sqlalchemy import DateTime, ForeignKey, String, func
+from sqlalchemy import (
+    JSON,
+    DateTime,
+    ForeignKey,
+    String,
+    func,
+)
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.models.base import Base
+
+if TYPE_CHECKING:
+    from app.models.company import Company
 
 
 class Lead(Base):
@@ -26,6 +31,21 @@ class Lead(Base):
         String(50),
         default="new",
         index=True,
+    )
+
+    qualification_score: Mapped[int | None] = mapped_column(nullable=True)
+    qualification_reasons: Mapped[list[str] | None] = mapped_column(
+        JSON,
+        nullable=True,
+    )
+    qualification_evidence: Mapped[list[str] | None] = mapped_column(
+        JSON,
+        nullable=True,
+    )
+    is_qualified: Mapped[bool | None] = mapped_column(nullable=True)
+    qualified_at: Mapped[datetime | None] = mapped_column(
+        DateTime(timezone=True),
+        nullable=True,
     )
 
     created_at: Mapped[datetime] = mapped_column(
