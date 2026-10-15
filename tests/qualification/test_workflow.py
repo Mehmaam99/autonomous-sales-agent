@@ -187,3 +187,43 @@ def test_workflow_records_empty_website_research_as_failed():
     )
     assert qualification_data["website_title"] == ""
     assert "Website research failed" in qualification_data["website_text"]
+
+
+def test_workflow_stops_when_research_persistence_fails():
+    company = MagicMock()
+    company.id = 10
+    company.name = "Example Realty"
+    company.website = "https://example.com"
+    company.industry = "real_estate"
+    company.location = "Karachi"
+
+    lead = MagicMock(spec=Lead)
+    lead.full_name = "Test Lead"
+    lead.email = "lead@example.com"
+    lead.company = company
+
+    session = MagicMock()
+    session.get.return_value = lead
+
+    workflow = LeadQualificationWorkflow.__new__(
+        LeadQualificationWorkflow
+    )
+    workflow.session = session
+    workflow.qualification_service = MagicMock()
+    workflow.repository = MagicMock()
+    workflow.website_researcher = MagicMock()
+    workflow.website_researcher.research_site.return_value = {
+        "url": "https://example.com",
+        "title": "Example Domain",
+        "text": "Useful company information.",
+    }
+    workflow.research_repository = MagicMock()
+    workflow.research_repository.save.side_effect = RuntimeError(
+        "Database failure"
+    )
+
+    with pytest.raises(RuntimeError, match="Database failure"):
+        workflow.run(1)
+
+    workflow.qualification_service.qualify.assert_not_called()
+    workflow.repository.save.assert_not_called()
