@@ -75,3 +75,20 @@ def test_save_rolls_back_on_commit_failure():
         )
 
     session.rollback.assert_called_once()
+
+
+def test_save_rolls_back_when_refresh_fails():
+    session = MagicMock()
+    session.refresh.side_effect = RuntimeError("Refresh failure")
+    repository = WebsiteResearchRepository(session)
+
+    with pytest.raises(RuntimeError, match="Refresh failure"):
+        repository.save(
+            company_id=10,
+            source_url="https://example.com",
+            status="success",
+            extracted_text="Research content.",
+        )
+
+    session.commit.assert_called_once()
+    session.rollback.assert_called_once()
