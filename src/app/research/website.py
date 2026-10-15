@@ -234,7 +234,7 @@ class WebsiteResearcher:
             parsed = urlsplit(value)
 
             if (
-                parsed.scheme not in {"http", "https"}
+                parsed.scheme.lower() not in {"http", "https"}
                 or not parsed.hostname
                 or parsed.username
                 or parsed.password
@@ -242,7 +242,24 @@ class WebsiteResearcher:
             ):
                 return None
 
-            return value
+            scheme = parsed.scheme.lower()
+            hostname = parsed.hostname.lower()
+            port = parsed.port
+
+            if port and not (
+                (scheme == "http" and port == 80)
+                or (scheme == "https" and port == 443)
+            ):
+                hostname = f"{hostname}:{port}"
+
+            path = parsed.path.rstrip("/") or "/"
+
+            return parsed._replace(
+                scheme=scheme,
+                netloc=hostname,
+                path=path,
+                fragment="",
+            ).geturl()
         except ValueError:
             return None
 

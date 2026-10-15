@@ -289,3 +289,36 @@ def test_research_page_rejects_cross_host_redirect():
         "https://example.com/about",
     )
 
+
+
+@pytest.mark.parametrize(
+    ("url", "expected"),
+    [
+        (
+            "HTTPS://EXAMPLE.COM/about/",
+            "https://example.com/about",
+        ),
+        (
+            "http://example.com:80/services",
+            "http://example.com/services",
+        ),
+        (
+            "https://example.com:443/contact",
+            "https://example.com/contact",
+        ),
+        (
+            "https://example.com:8443/about/",
+            "https://example.com:8443/about",
+        ),
+        (
+            "https://example.com/",
+            "https://example.com/",
+        ),
+        (
+            "https://example.com/about#team",
+            "https://example.com/about",
+        ),
+    ],
+)
+def test_normalize_url_canonicalizes_valid_urls(url, expected):
+    assert WebsiteResearcher._normalize_url(url) == expected
