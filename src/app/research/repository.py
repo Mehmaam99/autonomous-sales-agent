@@ -1,6 +1,10 @@
-﻿from sqlalchemy.orm import Session
+import logging
+
+from sqlalchemy.orm import Session
 
 from app.models.website_research import WebsiteResearch
+
+logger = logging.getLogger(__name__)
 
 
 class WebsiteResearchRepository:
@@ -38,7 +42,10 @@ class WebsiteResearchRepository:
             self.session.commit()
             self.session.refresh(record)
         except Exception:
-            self.session.rollback()
+            try:
+                self.session.rollback()
+            except Exception:
+                logger.exception("Rollback failed while saving website research.")
             raise
 
         return record

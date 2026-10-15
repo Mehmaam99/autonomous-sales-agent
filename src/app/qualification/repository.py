@@ -1,9 +1,12 @@
-﻿from datetime import UTC, datetime
+import logging
+from datetime import UTC, datetime
 
 from sqlalchemy.orm import Session
 
 from app.models.lead import Lead
 from app.qualification.schemas import LeadQualification
+
+logger = logging.getLogger(__name__)
 
 
 class LeadQualificationRepository:
@@ -33,7 +36,10 @@ class LeadQualificationRepository:
             self.session.commit()
             self.session.refresh(lead)
         except Exception:
-            self.session.rollback()
+            try:
+                self.session.rollback()
+            except Exception:
+                logger.exception("Rollback failed while saving lead qualification.")
             raise
 
         return lead

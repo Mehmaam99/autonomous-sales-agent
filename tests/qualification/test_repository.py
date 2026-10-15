@@ -76,3 +76,20 @@ def test_save_rolls_back_when_refresh_fails(qualification_result):
 
     session.commit.assert_called_once()
     session.rollback.assert_called_once()
+
+
+def test_save_preserves_commit_error_when_rollback_fails(
+    qualification_result,
+):
+    session = MagicMock()
+    lead = Lead(id=1, company_id=1, full_name="Test Lead")
+    session.get.return_value = lead
+    session.commit.side_effect = RuntimeError("Database failure")
+    session.rollback.side_effect = RuntimeError("Rollback failure")
+
+    repository = LeadQualificationRepository(session)
+
+    with pytest.raises(RuntimeError, match="Database failure"):
+        repository.save(1, qualification_result)
+
+    session.rollback.assert_called_once()
