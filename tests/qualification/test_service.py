@@ -141,3 +141,13 @@ def test_service_rejects_unqualified_decision_above_threshold(monkeypatch):
 
     with pytest.raises(ValueError, match="configured minimum score"):
         service.qualify({"business_type": "Real-estate agency"})
+
+
+def test_schema_rejects_decimal_score():
+    with pytest.raises(ValueError):
+        LeadQualification(
+            score=8.5,
+            reasons=["Good fit"],
+            evidence=["Relevant business information"],
+            qualified=True,
+        )
