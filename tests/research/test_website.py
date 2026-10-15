@@ -322,3 +322,70 @@ def test_research_page_rejects_cross_host_redirect():
 )
 def test_normalize_url_canonicalizes_valid_urls(url, expected):
     assert WebsiteResearcher._normalize_url(url) == expected
+
+
+def test_research_removes_empty_page_boilerplate():
+    html = """
+    <html>
+        <head><title>   </title></head>
+        <body>
+            <nav>Navigation links</nav>
+            <script>var x = 1;</script>
+            <style>.banner { display: none; }</style>
+            <footer>Footer links</footer>
+            <p>     </p>
+        </body>
+    </html>
+    """
+    response = MagicMock()
+    response.status_code = 200
+    response.headers = {"content-type": "text/html"}
+    response.iter_bytes.return_value = [html.encode()]
+    response.raise_for_status.return_value = None
+
+    client = MagicMock()
+    client.stream.return_value.__enter__.return_value = response
+
+    with (
+        patch("app.research.website.httpx.Client") as client_class,
+        patch.object(WebsiteResearcher, "_validate_public_host"),
+    ):
+        client_class.return_value.__enter__.return_value = client
+
+        result = WebsiteResearcher().research("https://example.com")
+
+    assert result["text"] == ""
+    assert result["title"] == ""
+
+
+def test_research_normalizes_extracted_whitespace():
+    html = """
+    <html>
+        <head><title>Example   Realty</title></head>
+        <body>
+            <h1>Real Estate</h1>
+            <p>We     help
+               businesses
+               grow.</p>
+        </body>
+    </html>
+    """
+    response = MagicMock()
+    response.status_code = 200
+    response.headers = {"content-type": "text/html"}
+    response.iter_bytes.return_value = [html.encode()]
+    response.raise_for_status.return_value = None
+
+    client = MagicMock()
+    client.stream.return_value.__enter__.return_value = response
+
+    with (
+        patch("app.research.website.httpx.Client") as client_class,
+        patch.object(WebsiteResearcher, "_validate_public_host"),
+    ):
+        client_class.return_value.__enter__.return_value = client
+
+        result = WebsiteResearcher().research("https://example.com")
+
+    assert result["title"] == "Example Realty"
+    assert result["text"] == "Real Estate We help businesses grow."

@@ -1,4 +1,4 @@
-import ipaddress
+﻿import ipaddress
 import socket
 from typing import ClassVar
 from urllib.parse import urldefrag, urljoin, urlsplit
@@ -46,7 +46,7 @@ class WebsiteResearcher:
         }
 
     def research_site(self, url: str) -> dict[str, object]:
-        """Research the homepage and a limited set of relevant same-host pages."""
+        """Research the homepage and relevant same-host pages."""
         homepage = self._research_page(url)
         pages = [homepage]
         visited = {homepage["url"]}
@@ -69,12 +69,14 @@ class WebsiteResearcher:
             visited.add(normalized)
 
             try:
-                page = self._research_page(normalized, expected_host=homepage_host)
+                page = self._research_page(
+                    normalized,
+                    expected_host=homepage_host,
+                )
             except WebsiteResearchError:
                 continue
 
-            final_host = urlsplit(page["url"]).hostname
-            if final_host != homepage_host:
+            if urlsplit(page["url"]).hostname != homepage_host:
                 continue
 
             pages.append(page)
@@ -92,9 +94,11 @@ class WebsiteResearcher:
         }
 
     def _research_page(
-        self, url: str, expected_host: str | None = None
+        self,
+        url: str,
+        expected_host: str | None = None,
     ) -> dict[str, object]:
-        """Fetch one page, enforce URL and response limits, and extract links."""
+        """Fetch one page with URL, redirect, and response-size protections."""
         current_url = self._validate_url(url)
 
         with httpx.Client(
@@ -118,14 +122,17 @@ class WebsiteResearcher:
                             redirect_url = self._validate_url(
                                 urljoin(current_url, location)
                             )
+
                             if (
                                 expected_host is not None
-                                and urlsplit(redirect_url).hostname != expected_host
+                                and urlsplit(redirect_url).hostname
+                                != expected_host
                             ):
                                 raise WebsiteResearchError(
                                     "Cross-host redirects are not allowed "
                                     "during multi-page research."
                                 )
+
                             current_url = redirect_url
                             continue
 
@@ -180,13 +187,22 @@ class WebsiteResearcher:
                     ]
                 ]
 
+                title = (
+                    " ".join(soup.title.get_text(" ", strip=True).split())
+                    if soup.title
+                    else ""
+                )
+
                 for element in soup(
                     ["script", "style", "noscript", "svg", "nav", "footer"]
                 ):
                     element.decompose()
 
-                title = soup.title.get_text(" ", strip=True) if soup.title else ""
-                text = soup.get_text(" ", strip=True)
+                text = (
+                    " ".join(soup.body.get_text(" ", strip=True).split())
+                    if soup.body
+                    else ""
+                )
 
                 return {
                     "url": current_url,
@@ -203,7 +219,7 @@ class WebsiteResearcher:
         links: list[str],
         expected_host: str | None,
     ) -> list[str]:
-        """Select relevant links that remain on the exact same hostname."""
+        """Select relevant links on the exact same hostname."""
         relevant: list[str] = []
 
         for link in links:
@@ -228,13 +244,14 @@ class WebsiteResearcher:
 
     @staticmethod
     def _normalize_url(url: str) -> str | None:
-        """Normalize a candidate URL, rejecting invalid or credentialed URLs."""
+        """Normalize candidate URLs and reject invalid or credentialed URLs."""
         try:
             value = urldefrag(url.strip()).url
             parsed = urlsplit(value)
+            scheme = parsed.scheme.lower()
 
             if (
-                parsed.scheme.lower() not in {"http", "https"}
+                scheme not in {"http", "https"}
                 or not parsed.hostname
                 or parsed.username
                 or parsed.password
@@ -242,7 +259,6 @@ class WebsiteResearcher:
             ):
                 return None
 
-            scheme = parsed.scheme.lower()
             hostname = parsed.hostname.lower()
             port = parsed.port
 
@@ -314,4 +330,3 @@ class WebsiteResearcher:
                 raise WebsiteResearchError(
                     "Private or non-public website addresses are not allowed."
                 )
-
