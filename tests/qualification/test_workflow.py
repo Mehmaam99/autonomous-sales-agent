@@ -132,3 +132,58 @@ def test_workflow_records_failed_website_research():
     )
     assert "Website research failed" in qualification_data["website_text"]
 
+
+def test_workflow_records_empty_website_research_as_failed():
+    company = MagicMock()
+    company.id = 10
+    company.name = "Example Realty"
+    company.website = "https://example.com"
+    company.industry = "real_estate"
+    company.location = "Karachi"
+
+    lead = MagicMock(spec=Lead)
+    lead.full_name = "Test Lead"
+    lead.email = "lead@example.com"
+    lead.company = company
+
+    session = MagicMock()
+    session.get.return_value = lead
+
+    result = LeadQualification(
+        score=2,
+        reasons=["Insufficient evidence."],
+        evidence=["No useful website content was available."],
+        qualified=False,
+    )
+
+    workflow = LeadQualificationWorkflow.__new__(
+        LeadQualificationWorkflow
+    )
+    workflow.session = session
+    workflow.qualification_service = MagicMock()
+    workflow.qualification_service.qualify.return_value = result
+    workflow.repository = MagicMock()
+    workflow.website_researcher = MagicMock()
+    workflow.website_researcher.research_site.return_value = {
+        "url": "https://example.com",
+        "title": "Example Domain",
+        "text": "   \n  ",
+    }
+    workflow.research_repository = MagicMock()
+
+    returned = workflow.run(1)
+
+    assert returned == result
+
+    workflow.research_repository.save.assert_called_once_with(
+        company_id=10,
+        source_url="https://example.com",
+        status="failed",
+        error_message="Website research returned no useful text.",
+    )
+
+    qualification_data = (
+        workflow.qualification_service.qualify.call_args.args[0]
+    )
+    assert qualification_data["website_title"] == ""
+    assert "Website research failed" in qualification_data["website_text"]

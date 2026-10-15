@@ -55,16 +55,32 @@ class LeadQualificationWorkflow:
                     "from the URL alone."
                 )
             else:
-                self.research_repository.save(
-                    company_id=company.id,
-                    source_url=research["url"],
-                    status="success",
-                    page_title=research["title"],
-                    extracted_text=research["text"],
-                )
-                lead_data["website"] = research["url"]
-                lead_data["website_title"] = research["title"]
-                lead_data["website_text"] = research["text"]
+                research_text = research["text"]
+
+                if not research_text.strip():
+                    self.research_repository.save(
+                        company_id=company.id,
+                        source_url=research["url"],
+                        status="failed",
+                        error_message=(
+                            "Website research returned no useful text."
+                        ),
+                    )
+                    lead_data["website_text"] = (
+                        "Website research failed. Do not infer company facts "
+                        "from the URL alone."
+                    )
+                else:
+                    self.research_repository.save(
+                        company_id=company.id,
+                        source_url=research["url"],
+                        status="success",
+                        page_title=research["title"],
+                        extracted_text=research_text,
+                    )
+                    lead_data["website"] = research["url"]
+                    lead_data["website_title"] = research["title"]
+                    lead_data["website_text"] = research_text
 
         result = self.qualification_service.qualify(lead_data)
         self.repository.save(lead_id, result)
