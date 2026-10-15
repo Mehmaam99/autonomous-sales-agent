@@ -151,3 +151,22 @@ def test_schema_rejects_decimal_score():
             evidence=["Relevant business information"],
             qualified=True,
         )
+
+
+def test_service_rejects_malformed_llm_json(monkeypatch):
+    class FakeGateway:
+        def __init__(self, niche):
+            pass
+
+        def generate(self, prompt, system_prompt=None):
+            return '{"score": 8, "reasons": ["Good fit"]'
+
+    monkeypatch.setattr(
+        "app.qualification.service.LLMGateway",
+        FakeGateway,
+    )
+
+    service = LeadQualificationService("real_estate")
+
+    with pytest.raises(ValueError):
+        service.qualify({"business_type": "Real-estate agency"})
