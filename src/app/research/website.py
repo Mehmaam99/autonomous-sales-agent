@@ -69,7 +69,7 @@ class WebsiteResearcher:
             visited.add(normalized)
 
             try:
-                page = self._research_page(normalized)
+                page = self._research_page(normalized, expected_host=homepage_host)
             except WebsiteResearchError:
                 continue
 
@@ -91,7 +91,9 @@ class WebsiteResearcher:
             "pages": pages,
         }
 
-    def _research_page(self, url: str) -> dict[str, object]:
+    def _research_page(
+        self, url: str, expected_host: str | None = None
+    ) -> dict[str, object]:
         """Fetch one page, enforce URL and response limits, and extract links."""
         current_url = self._validate_url(url)
 
@@ -113,9 +115,18 @@ class WebsiteResearcher:
                                     "Redirect has no destination."
                                 )
 
-                            current_url = self._validate_url(
+                            redirect_url = self._validate_url(
                                 urljoin(current_url, location)
                             )
+                            if (
+                                expected_host is not None
+                                and urlsplit(redirect_url).hostname != expected_host
+                            ):
+                                raise WebsiteResearchError(
+                                    "Cross-host redirects are not allowed "
+                                    "during multi-page research."
+                                )
+                            current_url = redirect_url
                             continue
 
                         response.raise_for_status()

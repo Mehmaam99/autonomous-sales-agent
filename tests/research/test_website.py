@@ -111,7 +111,7 @@ def test_research_site_collects_relevant_same_host_pages():
         },
     }
 
-    def fake_research_page(url):
+    def fake_research_page(url, **kwargs):
         if url == "https://example.com/":
             return homepage
         return page_results[url]
@@ -133,3 +133,159 @@ def test_research_site_collects_relevant_same_host_pages():
         page["url"].startswith("https://example.com/")
         for page in result["pages"]
     )
+
+
+def test_research_site_does_not_fetch_duplicate_urls():
+    researcher = WebsiteResearcher()
+
+    homepage = {
+        "url": "https://example.com/",
+        "title": "Example",
+        "text": "Homepage content.",
+        "links": [
+            "https://example.com/about",
+            "https://example.com/about",
+            "https://example.com/about#team",
+        ],
+    }
+
+    about_page = {
+        "url": "https://example.com/about",
+        "title": "About",
+        "text": "About content.",
+        "links": [],
+    }
+
+    def fake_research_page(url, **kwargs):
+        if url == "https://example.com/":
+            return homepage
+        return about_page
+
+    with patch.object(
+        researcher,
+        "_research_page",
+        side_effect=fake_research_page,
+    ) as mock_research:
+        result = researcher.research_site("https://example.com/")
+
+    assert len(result["pages"]) == 2
+    assert mock_research.call_count == 2
+
+
+def test_research_site_continues_when_subpage_fails():
+    researcher = WebsiteResearcher()
+
+    homepage = {
+        "url": "https://example.com/",
+        "title": "Example",
+        "text": "Homepage content.",
+        "links": [
+            "https://example.com/about",
+            "https://example.com/services",
+        ],
+    }
+
+    services_page = {
+        "url": "https://example.com/services",
+        "title": "Services",
+        "text": "Property management services.",
+        "links": [],
+    }
+
+    def fake_research_page(url, **kwargs):
+        if url == "https://example.com/":
+            return homepage
+        if url == "https://example.com/about":
+            raise WebsiteResearchError("Page unavailable.")
+        return services_page
+
+    with patch.object(
+        researcher,
+        "_research_page",
+        side_effect=fake_research_page,
+    ):
+        result = researcher.research_site("https://example.com/")
+
+    assert len(result["pages"]) == 2
+    assert "Homepage content." in result["text"]
+    assert "Property management services." in result["text"]
+    assert all("about" not in page["url"] for page in result["pages"])
+
+
+def test_research_site_never_fetches_more_than_max_pages():
+    researcher = WebsiteResearcher()
+
+    homepage = {
+        "url": "https://example.com/",
+        "title": "Example",
+        "text": "Homepage content.",
+        "links": [
+            f"https://example.com/services/{index}"
+            for index in range(1, 21)
+        ],
+    }
+
+    def fake_research_page(url, **kwargs):
+        if url == "https://example.com/":
+            return homepage
+        return {
+            "url": url,
+            "title": "Service",
+            "text": f"Service page: {url}",
+            "links": [],
+        }
+
+    with patch.object(
+        researcher,
+        "_research_page",
+        side_effect=fake_research_page,
+    ) as mock_research:
+        result = researcher.research_site("https://example.com/")
+
+    assert len(result["pages"]) == researcher.MAX_PAGES
+    assert mock_research.call_count == researcher.MAX_PAGES
+
+
+@pytest.mark.parametrize(
+    "url",
+    [
+        "ftp://example.com",
+        "https://user:password@example.com",
+        "https://example.com:0",
+        "not-a-url",
+    ],
+)
+def test_normalize_url_rejects_unsafe_or_invalid_urls(url):
+    assert WebsiteResearcher._normalize_url(url) is None
+
+
+def test_research_page_rejects_cross_host_redirect():
+    researcher = WebsiteResearcher()
+
+    response = MagicMock()
+    response.status_code = 302
+    response.headers = {"location": "https://other.com/about"}
+
+    client = MagicMock()
+    client.stream.return_value.__enter__.return_value = response
+
+    with (
+        patch("app.research.website.httpx.Client") as client_class,
+        patch.object(WebsiteResearcher, "_validate_public_host"),
+    ):
+        client_class.return_value.__enter__.return_value = client
+
+        with pytest.raises(
+            WebsiteResearchError,
+            match="Cross-host redirects are not allowed",
+        ):
+            researcher._research_page(
+                "https://example.com/about",
+                expected_host="example.com",
+            )
+
+    client.stream.assert_called_once_with(
+        "GET",
+        "https://example.com/about",
+    )
+
