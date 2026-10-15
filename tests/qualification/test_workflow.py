@@ -1,4 +1,4 @@
-﻿from unittest.mock import MagicMock
+from unittest.mock import MagicMock
 
 import pytest
 
@@ -38,7 +38,7 @@ def test_workflow_qualifies_and_saves_existing_lead():
     workflow.qualification_service.qualify.return_value = result
     workflow.repository = MagicMock()
     workflow.website_researcher = MagicMock()
-    workflow.website_researcher.research.return_value = {
+    workflow.website_researcher.research_site.return_value = {
         "url": "https://example.com",
         "title": "Example Domain",
         "text": "Example website content.",
@@ -111,7 +111,7 @@ def test_workflow_records_failed_website_research():
     from app.research.website import WebsiteResearchError
 
     workflow.website_researcher = MagicMock()
-    workflow.website_researcher.research.side_effect = (
+    workflow.website_researcher.research_site.side_effect = (
         WebsiteResearchError("Website request failed.")
     )
     workflow.research_repository = MagicMock()
@@ -131,3 +131,4 @@ def test_workflow_records_failed_website_research():
         workflow.qualification_service.qualify.call_args.args[0]
     )
     assert "Website research failed" in qualification_data["website_text"]
+

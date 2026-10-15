@@ -1,4 +1,4 @@
-﻿from sqlalchemy.orm import Session
+from sqlalchemy.orm import Session
 
 from app.models.lead import Lead
 from app.qualification.repository import LeadQualificationRepository
@@ -40,7 +40,9 @@ class LeadQualificationWorkflow:
 
         if company.website:
             try:
-                research = self.website_researcher.research(company.website)
+                research = self.website_researcher.research_site(
+                    company.website
+                )
             except WebsiteResearchError as exc:
                 self.research_repository.save(
                     company_id=company.id,
