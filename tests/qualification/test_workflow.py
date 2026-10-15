@@ -7,6 +7,22 @@ from app.qualification.schemas import LeadQualification
 from app.qualification.workflow import LeadQualificationWorkflow
 
 
+def build_workflow(lead, result=None):
+    session = MagicMock()
+    session.get.return_value = lead
+
+    workflow = LeadQualificationWorkflow.__new__(
+        LeadQualificationWorkflow
+    )
+    workflow.session = session
+    workflow.qualification_service = MagicMock()
+    workflow.qualification_service.qualify.return_value = result
+    workflow.repository = MagicMock()
+    workflow.website_researcher = MagicMock()
+    workflow.research_repository = MagicMock()
+
+    return workflow
+
 def test_workflow_qualifies_and_saves_existing_lead():
     company = MagicMock()
     company.id = 10
@@ -66,13 +82,7 @@ def test_workflow_qualifies_and_saves_existing_lead():
 
 
 def test_workflow_raises_for_missing_lead():
-    session = MagicMock()
-    session.get.return_value = None
-
-    workflow = LeadQualificationWorkflow.__new__(
-        LeadQualificationWorkflow
-    )
-    workflow.session = session
+    workflow = build_workflow(None)
 
     with pytest.raises(ValueError, match="Lead with ID 999 was not found"):
         workflow.run(999)
