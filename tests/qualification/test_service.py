@@ -110,3 +110,34 @@ def test_service_rejects_decision_below_configured_threshold(monkeypatch):
 
     with pytest.raises(ValueError, match="configured minimum score"):
         service.qualify({"business_type": "Real-estate agency"})
+
+
+def test_service_rejects_unqualified_decision_above_threshold(monkeypatch):
+    config = load_application_config("real_estate")
+    minimum_score = config.niche.qualification.minimum_score
+
+    fake_response = json.dumps(
+        {
+            "score": minimum_score,
+            "reasons": ["Business matches the target profile."],
+            "evidence": ["Supplied business information matches the criteria."],
+            "qualified": False,
+        }
+    )
+
+    class FakeGateway:
+        def __init__(self, niche):
+            pass
+
+        def generate(self, prompt, system_prompt=None):
+            return fake_response
+
+    monkeypatch.setattr(
+        "app.qualification.service.LLMGateway",
+        FakeGateway,
+    )
+
+    service = LeadQualificationService("real_estate")
+
+    with pytest.raises(ValueError, match="configured minimum score"):
+        service.qualify({"business_type": "Real-estate agency"})
