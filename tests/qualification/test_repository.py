@@ -1,4 +1,4 @@
-﻿from unittest.mock import MagicMock
+from unittest.mock import MagicMock
 
 import pytest
 
@@ -93,3 +93,23 @@ def test_save_preserves_commit_error_when_rollback_fails(
         repository.save(1, qualification_result)
 
     session.rollback.assert_called_once()
+
+
+def test_save_logs_rollback_failure_and_preserves_original_error(
+    qualification_result, caplog
+):
+    import logging
+
+    session = MagicMock()
+    lead = Lead(id=1, company_id=1, full_name="Test Lead")
+    session.get.return_value = lead
+    session.commit.side_effect = RuntimeError("Database failure")
+    session.rollback.side_effect = RuntimeError("Rollback failure")
+
+    repository = LeadQualificationRepository(session)
+
+    with caplog.at_level(logging.ERROR), pytest.raises(RuntimeError, match="Database failure"):
+            repository.save(1, qualification_result)
+
+    assert "Rollback failed while saving lead qualification." in caplog.text
+    assert "Rollback failure" in caplog.text
