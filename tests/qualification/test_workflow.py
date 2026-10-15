@@ -227,3 +227,52 @@ def test_workflow_stops_when_research_persistence_fails():
 
     workflow.qualification_service.qualify.assert_not_called()
     workflow.repository.save.assert_not_called()
+
+
+def test_workflow_skips_research_when_company_has_no_website():
+    company = MagicMock()
+    company.id = 10
+    company.name = "Example Realty"
+    company.website = None
+    company.industry = "real_estate"
+    company.location = "Karachi"
+
+    lead = MagicMock(spec=Lead)
+    lead.full_name = "Test Lead"
+    lead.email = "lead@example.com"
+    lead.company = company
+
+    session = MagicMock()
+    session.get.return_value = lead
+
+    result = LeadQualification(
+        score=2,
+        reasons=["Insufficient evidence."],
+        evidence=["No website was available."],
+        qualified=False,
+    )
+
+    workflow = LeadQualificationWorkflow.__new__(
+        LeadQualificationWorkflow
+    )
+    workflow.session = session
+    workflow.qualification_service = MagicMock()
+    workflow.qualification_service.qualify.return_value = result
+    workflow.repository = MagicMock()
+    workflow.website_researcher = MagicMock()
+    workflow.research_repository = MagicMock()
+
+    returned = workflow.run(1)
+
+    assert returned == result
+    workflow.website_researcher.research_site.assert_not_called()
+    workflow.research_repository.save.assert_not_called()
+
+    qualification_data = (
+        workflow.qualification_service.qualify.call_args.args[0]
+    )
+    assert qualification_data["website"] == ""
+    assert qualification_data["website_title"] == ""
+    assert qualification_data["website_text"] == ""
+
+    workflow.repository.save.assert_called_once_with(1, result)
